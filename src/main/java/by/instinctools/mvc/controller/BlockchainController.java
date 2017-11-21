@@ -1,14 +1,11 @@
-package by.instinctools.controller;
+package by.instinctools.mvc.controller;
 
-import by.instinctools.TransactionDto;
+import by.instinctools.mvc.dto.TransactionDto;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.web3j.crypto.RawTransaction;
-import org.web3j.protocol.core.methods.request.Transaction;
-import org.web3j.utils.Convert;
-import org.web3j.utils.Numeric;
 
 import java.util.logging.Logger;
 
@@ -16,10 +13,10 @@ import java.util.logging.Logger;
  * Created by haria on 21.11.17.
  */
 @Controller
-@RequestMapping(value="/api")
+@RequestMapping(value = "/api")
 public class BlockchainController {
 
-    public static final  Logger LOGGER = Logger.getLogger(BlockchainController.class.getName());
+    public static final Logger LOGGER = Logger.getLogger(BlockchainController.class.getName());
 
     @PostMapping(path = "/blockchain")
     public void sendTransaction(@RequestBody final TransactionDto transaction) {
