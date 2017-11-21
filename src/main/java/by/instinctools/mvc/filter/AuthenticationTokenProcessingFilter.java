@@ -1,12 +1,10 @@
-package by.instinctools.mvc.auth.filter;
+package by.instinctools.mvc.filter;
 
 import by.instinctools.domain.entity.User;
 import by.instinctools.domain.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.GenericFilterBean;
 
@@ -16,6 +14,8 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+
+import static org.springframework.security.core.context.SecurityContextHolder.getContext;
 
 @Component
 public class AuthenticationTokenProcessingFilter extends GenericFilterBean {
@@ -38,9 +38,7 @@ public class AuthenticationTokenProcessingFilter extends GenericFilterBean {
             final User user = repository.findByToken(accessToken);
 
             final Authentication authentication = new UsernamePasswordAuthenticationToken(user.getEmail(), user.getToken());
-
-            final SecurityContext context = SecurityContextHolder.getContext();
-            context.setAuthentication(authentication);
+            getContext().setAuthentication(authentication);
         }
 
         filterChain.doFilter(servletRequest, servletResponse);

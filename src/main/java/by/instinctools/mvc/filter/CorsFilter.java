@@ -1,4 +1,4 @@
-package by.instinctools.mvc.auth.filter;
+package by.instinctools.mvc.filter;
 
 import org.springframework.stereotype.Component;
 
