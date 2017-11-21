@@ -1,10 +1,13 @@
-package by.instinctools.mvc.dto;
+package by.instinctools;
 
 import org.web3j.crypto.RawTransaction;
 
 import java.io.Serializable;
 
-public class TransactionDto implements Serializable {
+/**
+ * Created by haria on 21.11.17.
+ */
+public class TransactionDto implements Serializable{
 
     private String token;
     private RawTransaction tx;
