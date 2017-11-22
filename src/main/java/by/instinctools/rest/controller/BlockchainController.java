@@ -4,8 +4,6 @@ import by.instinctools.rest.dto.TransactionDto;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.ethereum.core.Transaction;
-import org.ethereum.facade.Ethereum;
-import org.ethereum.facade.EthereumFactory;
 import org.ethereum.util.blockchain.EtherUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
@@ -51,7 +49,5 @@ public class BlockchainController {
         LOGGER.info("Data: " + data);
         LOGGER.info("Gas limit: " + gasLimit);
         LOGGER.info("Gas price: " + gasPrice + " (" + EtherUtil.convert(gasPrice.longValue(), EtherUtil.Unit.GWEI) + " Gwei)");
-
-        Ethereum ethereum = EthereumFactory.createEthereum();
     }
 }

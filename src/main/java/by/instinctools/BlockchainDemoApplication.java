@@ -1,14 +1,13 @@
 package by.instinctools;
 
-import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+import static org.springframework.boot.SpringApplication.run;
 
 @SpringBootApplication
 public class BlockchainDemoApplication {
 
-	public static void main(String[] args) {
-
-		SpringApplication.run(BlockchainDemoApplication.class, args);
-	}
-
+    public static void main(String[] args) {
+        run(BlockchainDemoApplication.class, args);
+    }
 }
