@@ -52,23 +52,23 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- WEB3J -->
-        <dependency>
-            <groupId>org.web3j</groupId>
-            <artifactId>core</artifactId>
-            <version>${web3j.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.web3j</groupId>
-            <artifactId>crypto</artifactId>
-            <version>RELEASE</version>
-        </dependency>
-        <dependency>
-            <groupId>org.web3j</groupId>
-            <artifactId>core</artifactId>
-            <version>RELEASE</version>
-        </dependency>
+        <!--&lt;!&ndash; WEB3J &ndash;&gt;-->
+        <!--<dependency>-->
+            <!--<groupId>org.web3j</groupId>-->
+            <!--<artifactId>core</artifactId>-->
+            <!--<version>${web3j.version}</version>-->
+            <!--<scope>test</scope>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+            <!--<groupId>org.web3j</groupId>-->
+            <!--<artifactId>crypto</artifactId>-->
+            <!--<version>RELEASE</version>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+            <!--<groupId>org.web3j</groupId>-->
+            <!--<artifactId>core</artifactId>-->
+            <!--<version>RELEASE</version>-->
+        <!--</dependency>-->
 
 
         <!-- UTIL -->
