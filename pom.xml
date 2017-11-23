@@ -27,15 +27,6 @@
 
     <dependencies>
 
-        <!-- SPRING -->
-        <!--<dependency>-->
-        <!--<groupId>org.springframework.boot</groupId>-->
-        <!--<artifactId>spring-boot-starter-data-jpa</artifactId>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-        <!--<groupId>org.springframework.boot</groupId>-->
-        <!--<artifactId>spring-boot-starter-data-mongodb</artifactId>-->
-        <!--</dependency>-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-rest</artifactId>
@@ -51,22 +42,6 @@
         </dependency>
 
         <!--&lt;!&ndash; WEB3J &ndash;&gt;-->
-        <!--<dependency>-->
-            <!--<groupId>org.web3j</groupId>-->
-            <!--<artifactId>core</artifactId>-->
-            <!--<version>${web3j.version}</version>-->
-            <!--<scope>test</scope>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-            <!--<groupId>org.web3j</groupId>-->
-            <!--<artifactId>crypto</artifactId>-->
-            <!--<version>RELEASE</version>-->
-        <!--</dependency>-->
-        <!--<dependency>-->
-            <!--<groupId>org.web3j</groupId>-->
-            <!--<artifactId>core</artifactId>-->
-            <!--<version>RELEASE</version>-->
-        <!--</dependency>-->
 
         <!-- UTIL -->
         <dependency>
@@ -79,6 +54,14 @@
             <artifactId>commons-codec</artifactId>
             <version>1.11</version>
         </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.web3j/core -->
+        <dependency>
+            <groupId>org.web3j</groupId>
+            <artifactId>core</artifactId>
+            <version>3.1.1</version>
+        </dependency>
+
 
     </dependencies>
 
