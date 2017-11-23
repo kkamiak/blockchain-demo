@@ -1,25 +1,38 @@
 package by.instinctools.utils;
 
 
+import org.bouncycastle.util.BigIntegers;
 import org.bouncycastle.util.encoders.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.web3j.rlp.RlpEncoder;
 import org.web3j.rlp.RlpList;
 import org.web3j.rlp.RlpString;
 import org.web3j.rlp.RlpType;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.bouncycastle.util.BigIntegers.*;
 
 /**
  * Created by haria on 23.11.17.
  */
-public class RlpDecoder {
+public class RLP extends RlpEncoder{
 
     private static final Logger logger = LoggerFactory.getLogger("rlp");
 
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
     public static final byte[] ZERO_BYTE_ARRAY = new byte[]{0};
+
+    public static final byte[] EMPTY_ELEMENT_RLP = encode(RlpString.create(new byte[0]));
+    private static final double MAX_ITEM_LENGTH = Math.pow(256, 8);
+    private static final int SIZE_THRESHOLD = 56;
+    private static final int OFFSET_SHORT_ITEM = 0x80;
+    private static final int OFFSET_LONG_ITEM = 0xb7;
+    private static final int OFFSET_SHORT_LIST = 0xc0;
+    private static final int OFFSET_LONG_LIST = 0xf7;
 
     public static RlpList decode(byte[] msgData) {
         RlpList rlpList = new RlpList(new ArrayList<>());
@@ -134,6 +147,9 @@ public class RlpDecoder {
         }
     }
 
+    public static byte[] encodeBytes(byte [] value) {
+       return encode(RlpString.create(value));
+    }
 
     private static int calcLength(int lengthOfLength, byte[] msgData, int pos) {
         byte pow = (byte) (lengthOfLength - 1);
@@ -155,6 +171,70 @@ public class RlpDecoder {
         }
 
         return length;
+    }
+
+    public static byte[] encodeList(byte[]... elements) {
+
+        if (elements == null) {
+            return new byte[]{(byte) OFFSET_SHORT_LIST};
+        }
+
+        int totalLength = 0;
+        for (byte[] element1 : elements) {
+            totalLength += element1.length;
+        }
+
+        byte[] data;
+        int copyPos;
+        if (totalLength < SIZE_THRESHOLD) {
+
+            data = new byte[1 + totalLength];
+            data[0] = (byte) (OFFSET_SHORT_LIST + totalLength);
+            copyPos = 1;
+        } else {
+            // length of length = BX
+            // prefix = [BX, [length]]
+            int tmpLength = totalLength;
+            byte byteNum = 0;
+            while (tmpLength != 0) {
+                ++byteNum;
+                tmpLength = tmpLength >> 8;
+            }
+            tmpLength = totalLength;
+            byte[] lenBytes = new byte[byteNum];
+            for (int i = 0; i < byteNum; ++i) {
+                lenBytes[byteNum - 1 - i] = (byte) ((tmpLength >> (8 * i)) & 0xFF);
+            }
+            // first byte = F7 + bytes.length
+            data = new byte[1 + lenBytes.length + totalLength];
+            data[0] = (byte) (OFFSET_LONG_LIST + byteNum);
+            System.arraycopy(lenBytes, 0, data, 1, lenBytes.length);
+
+            copyPos = lenBytes.length + 1;
+        }
+        for (byte[] element : elements) {
+            System.arraycopy(element, 0, data, copyPos, element.length);
+            copyPos += element.length;
+        }
+        return data;
+    }
+
+    public static byte[] encodeBigInteger(BigInteger srcBigInteger) {
+        if (srcBigInteger.equals(BigInteger.ZERO))
+            return encodeByte((byte) 0);
+        else {
+            return encodeBytes(asUnsignedByteArray(srcBigInteger));
+        }
+    }
+
+    public static byte[] encodeByte(byte singleByte) {
+        if ((singleByte & 0xFF) == 0) {
+            return new byte[]{(byte) OFFSET_SHORT_ITEM};
+        } else if ((singleByte & 0xFF) <= 0x7F) {
+            return new byte[]{singleByte};
+        } else {
+            return new byte[]{(byte) (OFFSET_SHORT_ITEM + 1), singleByte};
+        }
     }
 
 }

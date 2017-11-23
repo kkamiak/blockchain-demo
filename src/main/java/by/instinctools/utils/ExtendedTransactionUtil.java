@@ -31,7 +31,7 @@ public class ExtendedTransactionUtil extends TransactionUtils {
 
         try {
 
-            RlpList e = RlpDecoder.decode(bytes);
+            RlpList e = RLP.decode(bytes);
 
             RlpList transaction = (RlpList) e.getValues().get(0);
             if(transaction.getValues().size() > 9) {

@@ -35,7 +35,9 @@ public class BlockchainController {
         final String data = transaction.getTx();
         byte[] b = Hex.decodeHex(data.toCharArray());
         EncodedTransaction tx = new EncodedTransaction(b);
-        tx.toString();
+//        tx.toString();
+
+        byte[] gasPrice = tx.getGasPrice();
         Web3j web3j = Web3j.build(new HttpService(
                 "https://rinkeby.infura.io/WVvaSdEc0vA8e4yI3wUv "));
 
