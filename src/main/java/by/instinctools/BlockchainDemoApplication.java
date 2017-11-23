@@ -7,7 +7,7 @@ import static org.springframework.boot.SpringApplication.run;
 @SpringBootApplication
 public class BlockchainDemoApplication {
 
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         run(BlockchainDemoApplication.class, args);
     }
 }
