@@ -1,7 +1,5 @@
 package by.instinctools.utils;
 
-
-import org.bouncycastle.util.BigIntegers;
 import org.bouncycastle.util.encoders.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +17,7 @@ import static org.bouncycastle.util.BigIntegers.*;
 /**
  * Created by haria on 23.11.17.
  */
-public class RLP extends RlpEncoder{
+public class RLP extends RlpEncoder {
 
     private static final Logger logger = LoggerFactory.getLogger("rlp");
 
@@ -41,114 +39,159 @@ public class RLP extends RlpEncoder{
     }
 
     private static void fullTraverse(byte[] msgData, int level, int startPos, int endPos, int levelToIndex, RlpList rlpList) {
+
         try {
-            if (msgData != null && msgData.length != 0) {
-                int e = startPos;
+            if (msgData == null || msgData.length == 0)
+                return;
+            int pos = startPos;
 
-                while (true) {
-                    while (e < endPos) {
-                        logger.debug("fullTraverse: level: " + level + " startPos: " + e + " endPos: " + endPos);
-                        byte[] rlpPrefix;
-                        byte var14;
-                        int var16;
-                        if ((msgData[e] & 255) > 247) {
-                            var14 = (byte) (msgData[e] - 247);
-                            var16 = calcLength(var14, msgData, e);
-                            if (var16 < 56) {
-                                throw new RuntimeException("Short list has been encoded as long list");
-                            }
+            while (pos < endPos) {
 
-                            if (var16 > msgData.length - e - var14) {
-                                throw new RuntimeException("Parsed data lays outside of RLP length boundaries");
-                            }
+                logger.debug("fullTraverse: level: " + level + " startPos: " + pos + " endPos: " + endPos);
 
-                            rlpPrefix = new byte[var14 + var16 + 1];
-                            System.arraycopy(msgData, e, rlpPrefix, 0, var14 + var16 + 1);
 
-                            List<RlpType> prefixes = new ArrayList<>();
-                            prefixes.add(RlpString.create(rlpPrefix));
+                // It's a list with a payload more than 55 bytes
+                // data[0] - 0xF7 = how many next bytes allocated
+                // for the length of the list
+                if ((msgData[pos] & 0xFF) > OFFSET_LONG_LIST) {
 
-                            RlpList var19 = new RlpList(prefixes);
+                    byte lengthOfLength = (byte) (msgData[pos] - OFFSET_LONG_LIST);
+                    int length = calcLength(lengthOfLength, msgData, pos);
 
-                            fullTraverse(msgData, level + 1, e + var14 + 1, e + var14 + var16 + 1, levelToIndex, var19);
-                            rlpList.getValues().add(var19);
-                            e += var14 + var16 + 1;
-                        } else {
-                            byte[] var15;
-                            if ((msgData[e] & 255) >= 192 && (msgData[e] & 255) <= 247) {
-                                var14 = (byte) ((msgData[e] & 255) - 192);
-                                var15 = new byte[var14 + 1];
-                                System.arraycopy(msgData, e, var15, 0, var14 + 1);
-
-                                List<RlpType> var15List = new ArrayList<>();
-                                var15List.add(RlpString.create(var15));
-
-                                RlpList var17 = new RlpList(var15List);
-                                if (var14 > 0) {
-                                    fullTraverse(msgData, level + 1, e + 1, e + var14 + 1, levelToIndex, var17);
-                                }
-
-                                rlpList.getValues().add(var17);
-                                e += 1 + var14;
-                            } else if ((msgData[e] & 255) > 183 && (msgData[e] & 255) < 192) {
-                                var14 = (byte) (msgData[e] - 183);
-                                var16 = calcLength(var14, msgData, e);
-                                if (var16 < 56) {
-                                    throw new RuntimeException("Short item has been encoded as long item");
-                                }
-
-                                if (var16 > msgData.length - e - var14) {
-                                    throw new RuntimeException("Parsed data lays outside of RLP length boundaries");
-                                }
-
-                                rlpPrefix = new byte[var16];
-                                System.arraycopy(msgData, e + var14 + 1, rlpPrefix, 0, var16);
-                                byte[] var18 = new byte[var14 + 1];
-                                System.arraycopy(msgData, e, var18, 0, var14 + 1);
-
-                                rlpList.getValues().add(RlpString.create(rlpPrefix));
-                                e += var14 + var16 + 1;
-                            } else if ((msgData[e] & 255) > 128 && (msgData[e] & 255) <= 183) {
-                                var14 = (byte) ((msgData[e] & 255) - 128);
-                                var15 = new byte[var14];
-                                System.arraycopy(msgData, e + 1, var15, 0, var14);
-                                if (var14 == 1 && (var15[0] & 255) < 128) {
-                                    throw new RuntimeException("Single byte has been encoded as byte string");
-                                }
-
-                                rlpPrefix = new byte[2];
-                                System.arraycopy(msgData, e, rlpPrefix, 0, 2);
-
-                                rlpList.getValues().add(RlpString.create(var15));
-                                e += 1 + var14;
-                            } else {
-                                byte[] item;
-                                RlpString rlpItem;
-                                if ((msgData[e] & 255) == 128) {
-                                    item = EMPTY_BYTE_ARRAY;
-                                    rlpList.getValues().add(RlpString.create(item));
-                                    ++e;
-                                } else if ((msgData[e] & 255) < 128) {
-                                    item = new byte[]{(byte) (msgData[e] & 255)};
-                                    rlpList.getValues().add(RlpString.create(item));
-                                    ++e;
-                                }
-                            }
-                        }
+                    if (length < SIZE_THRESHOLD) {
+                        throw new RuntimeException("Short list has been encoded as long list");
                     }
 
-                    return;
+                    // check payload bounds
+                    if (length > msgData.length - pos - lengthOfLength) {
+                        throw new RuntimeException("Parsed data lays outside of RLP length boundaries");
+                    }
+
+                    byte[] rlpData = new byte[lengthOfLength + length + 1];
+                    System.arraycopy(msgData, pos, rlpData, 0, lengthOfLength
+                            + length + 1);
+
+                    List<RlpType> prefixes = new ArrayList<>();
+
+                    RlpList newLevelList = new RlpList(prefixes);
+//                    newLevelList.setRlpData(rlpData);
+
+//                    RLPList newLevelList = new RLPList();
+//                    newLevelList.setRLPData(rlpData);
+
+                    fullTraverse(msgData, level + 1, pos + lengthOfLength + 1,
+                            pos + lengthOfLength + length + 1, levelToIndex,
+                            newLevelList);
+                    rlpList.getValues().add(newLevelList);
+
+                    pos += lengthOfLength + length + 1;
+                    continue;
+                }
+                // It's a list with a payload less than 55 bytes
+                if ((msgData[pos] & 0xFF) >= OFFSET_SHORT_LIST
+                        && (msgData[pos] & 0xFF) <= OFFSET_LONG_LIST) {
+
+                    byte length = (byte) ((msgData[pos] & 0xFF) - OFFSET_SHORT_LIST);
+
+                    byte[] rlpData = new byte[length + 1];
+                    System.arraycopy(msgData, pos, rlpData, 0, length + 1);
+
+                    List<RlpType> prefixes = new ArrayList<>();
+
+                    RlpList newLevelList = new RlpList(prefixes);
+//                    newLevelList.setRlpData(rlpData);
+
+                    if (length > 0)
+                        fullTraverse(msgData, level + 1, pos + 1, pos + length
+                                + 1, levelToIndex, newLevelList);
+                    rlpList.getValues().add(newLevelList);
+
+                    pos += 1 + length;
+                    continue;
+                }
+                // It's an item with a payload more than 55 bytes
+                // data[0] - 0xB7 = how much next bytes allocated for
+                // the length of the string
+                if ((msgData[pos] & 0xFF) > OFFSET_LONG_ITEM
+                        && (msgData[pos] & 0xFF) < OFFSET_SHORT_LIST) {
+
+                    byte lengthOfLength = (byte) (msgData[pos] - OFFSET_LONG_ITEM);
+                    int length = calcLength(lengthOfLength, msgData, pos);
+
+                    if (length < SIZE_THRESHOLD) {
+                        throw new RuntimeException("Short item has been encoded as long item");
+                    }
+
+                    // check payload bounds
+                    if (length > msgData.length - pos - lengthOfLength) {
+                        throw new RuntimeException("Parsed data lays outside of RLP length boundaries");
+                    }
+
+                    // now we can parse an item for data[1]..data[length]
+                    byte[] item = new byte[length];
+                    System.arraycopy(msgData, pos + lengthOfLength + 1, item,
+                            0, length);
+
+                    byte[] rlpPrefix = new byte[lengthOfLength + 1];
+                    System.arraycopy(msgData, pos, rlpPrefix, 0,
+                            lengthOfLength + 1);
+
+                    RlpString rlpItem = RlpString.create(item);
+                    rlpList.getValues().add(rlpItem);
+                    pos += lengthOfLength + length + 1;
+
+                    continue;
+                }
+                // It's an item less than 55 bytes long,
+                // data[0] - 0x80 == length of the item
+                if ((msgData[pos] & 0xFF) > OFFSET_SHORT_ITEM
+                        && (msgData[pos] & 0xFF) <= OFFSET_LONG_ITEM) {
+
+                    byte length = (byte) ((msgData[pos] & 0xFF) - OFFSET_SHORT_ITEM);
+
+                    byte[] item = new byte[length];
+                    System.arraycopy(msgData, pos + 1, item, 0, length);
+
+                    if (length == 1 && (item[0] & 0xFF) < OFFSET_SHORT_ITEM) {
+                        throw new RuntimeException("Single byte has been encoded as byte string");
+                    }
+
+                    byte[] rlpPrefix = new byte[2];
+                    System.arraycopy(msgData, pos, rlpPrefix, 0, 2);
+
+                    RlpString rlpItem = RlpString.create(item);
+                    rlpList.getValues().add(rlpItem);
+                    pos += 1 + length;
+
+                    continue;
+                }
+                // null item
+                if ((msgData[pos] & 0xFF) == OFFSET_SHORT_ITEM) {
+                    byte[] item = ByteUtil.EMPTY_BYTE_ARRAY;
+                    RlpString rlpItem = RlpString.create(item);
+                    rlpList.getValues().add(rlpItem);
+                    pos += 1;
+                    continue;
+                }
+                // single byte item
+                if ((msgData[pos] & 0xFF) < OFFSET_SHORT_ITEM) {
+
+                    byte[] item = {(byte) (msgData[pos] & 0xFF)};
+
+                    RlpString rlpItem = RlpString.create(item);
+                    rlpList.getValues().add(rlpItem);
+                    pos += 1;
                 }
             }
-        } catch (Exception var12) {
-            throw new RuntimeException("RLP wrong encoding (" + Hex.toHexString(msgData, startPos, endPos - startPos) + ")", var12);
-        } catch (OutOfMemoryError var13) {
-            throw new RuntimeException("Invalid RLP (excessive mem allocation while parsing) (" + Hex.toHexString(msgData, startPos, endPos - startPos) + ")", var13);
+        } catch (Exception e) {
+            throw new RuntimeException("RLP wrong encoding (" + Hex.toHexString(msgData, startPos, endPos - startPos) + ")", e);
+        } catch (OutOfMemoryError e) {
+            throw new RuntimeException("Invalid RLP (excessive mem allocation while parsing) (" + Hex.toHexString(msgData, startPos, endPos - startPos) + ")", e);
         }
     }
 
-    public static byte[] encodeBytes(byte [] value) {
-       return encode(RlpString.create(value));
+    public static byte[] encodeBytes(byte[] value) {
+        return encode(RlpString.create(value));
     }
 
     private static int calcLength(int lengthOfLength, byte[] msgData, int pos) {

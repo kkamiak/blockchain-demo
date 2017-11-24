@@ -13,8 +13,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.methods.request.Transaction;
 import org.web3j.protocol.http.HttpService;
+import org.web3j.utils.Convert;
+import org.web3j.utils.Numeric;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.logging.Logger;
+
+import static org.web3j.utils.Convert.Unit.ETHER;
+import static org.web3j.utils.Convert.Unit.GWEI;
 
 @Controller
 @RequestMapping(value = "/api")
@@ -34,10 +41,30 @@ public class BlockchainController {
 
         final String data = transaction.getTx();
         byte[] b = Hex.decodeHex(data.toCharArray());
-        EncodedTransaction tx = new EncodedTransaction(b);
+        by.instinctools.utils.Transaction tx = new by.instinctools.utils.Transaction(b);
 //        tx.toString();
 
-        byte[] gasPrice = tx.getGasPrice();
+//        byte[] gasPrice = tx.getGasPrice();
+
+
+//        BigInteger nonce = new BigInteger(tx.getNonce());
+//        BigInteger value = new BigInteger(tx.getValue());
+        BigInteger gasLimit = new BigInteger(tx.getGasLimit());
+        BigInteger gasPrice = new BigInteger(tx.getGasPrice());
+//        String transactionSigner = Hex.encodeHexString(tx.getSender());
+        String receiver = Hex.encodeHexString(tx.getReceiveAddress());
+
+//        LOGGER.info("Signed by: " + transactionSigner);
+//        LOGGER.info("Nonce " + nonce);
+        LOGGER.info("To " + receiver);
+//        LOGGER.info("Value " + value + " (" + Convert.fromWei(new BigDecimal(value), ETHER) + " ETH)");
+        LOGGER.info("Data: " + data);
+        LOGGER.info("Gas limit: " + gasLimit);
+        LOGGER.info("Gas price: " + gasPrice + " (" + Convert.fromWei(new BigDecimal(gasPrice), GWEI) + " Gwei)");
+
+        byte [] ttt = tx.getSender();
+        String sender = Hex.encodeHexString(ttt);
+
         Web3j web3j = Web3j.build(new HttpService(
                 "https://rinkeby.infura.io/WVvaSdEc0vA8e4yI3wUv "));
 

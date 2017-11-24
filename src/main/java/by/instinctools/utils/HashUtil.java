@@ -1,6 +1,6 @@
 package by.instinctools.utils;
 
-import com.sun.javafx.runtime.SystemProperties;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.util.encoders.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,6 +8,7 @@ import java.math.BigInteger;
 import java.security.*;
 import java.util.Random;
 
+import static by.instinctools.utils.ByteUtil.EMPTY_BYTE_ARRAY;
 import static java.util.Arrays.copyOfRange;
 
 public class HashUtil {
@@ -23,13 +24,9 @@ public class HashUtil {
     private static final String HASH_256_ALGORITHM_NAME;
     private static final String HASH_512_ALGORITHM_NAME;
 
-    public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
-    public static final byte[] ZERO_BYTE_ARRAY = new byte[]{0};
-
     private static final MessageDigest sha256digest;
 
     static {
-
         CRYPTO_PROVIDER = Security.getProvider("SC");
         HASH_256_ALGORITHM_NAME = "ETH-KECCAK-256";
         HASH_512_ALGORITHM_NAME = "ETH-KECCAK-512";

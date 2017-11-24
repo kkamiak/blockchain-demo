@@ -12,7 +12,7 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import static by.instinctools.utils.HashUtil.EMPTY_BYTE_ARRAY;
+import static by.instinctools.utils.ByteUtil.EMPTY_BYTE_ARRAY;
 import static org.apache.commons.lang3.ArrayUtils.isEmpty;
 
 /**
@@ -55,7 +55,7 @@ public class EncodedTransaction {
         this.chainId = chainId;
 
         if (receiveAddress == null) {
-            this.receiveAddress = ByteUtil.EMPTY_BYTE_ARRAY;
+            this.receiveAddress = EMPTY_BYTE_ARRAY;
         }
 
         parsed = true;
