@@ -4,5 +4,7 @@ import org.web3j.crypto.RawTransaction;
 
 public interface MainManagement {
 
-    void sendRawTransaction(RawTransaction rawTransaction, String tx);
+    String sendRawTransaction(RawTransaction rawTransaction, String tx);
+
+    Status checkRawStatus(String token);
 }

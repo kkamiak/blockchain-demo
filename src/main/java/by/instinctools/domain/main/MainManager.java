@@ -2,8 +2,6 @@ package by.instinctools.domain.main;
 
 import by.instinctools.domain.mapper.MapperManagement;
 import by.instinctools.domain.validator.ValidateManagement;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -16,13 +14,15 @@ import org.web3j.protocol.core.methods.response.EthGetBalance;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static org.web3j.protocol.core.DefaultBlockParameterName.LATEST;
 
 @Component
 public class MainManager implements MainManagement {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(MainManager.class);
 
     private static final int LESS = -1;
 
@@ -31,6 +31,8 @@ public class MainManager implements MainManagement {
     private final Web3j web3j;
 
     private final String hostAddress;
+
+    private final Map<String, CompletableFuture> cashe;
 
     @Autowired
     public MainManager(final MapperManagement<RawTransaction, Transaction> mapper,
@@ -43,55 +45,69 @@ public class MainManager implements MainManagement {
         this.web3j = web3j;
 
         this.hostAddress = hostAddress;
+        this.cashe = new HashMap<>();
     }
 
     @Override
-    public void sendRawTransaction(final RawTransaction rawTransaction, final String tx) {
+    public String sendRawTransaction(final RawTransaction rawTransaction, final String tx) {
         validator.validate(rawTransaction);
         final Transaction transaction = mapper.transform(rawTransaction);
 
-        try {
+        final CompletableFuture<EthGetBalance> getBalance = web3j.ethGetBalance(transaction.getFrom(), LATEST).sendAsync();
+        final CompletableFuture<EthEstimateGas> getGas = web3j.ethEstimateGas(transaction).sendAsync();
+        final CompletableFuture<EthGasPrice> getGasPice = web3j.ethGasPrice().sendAsync();
 
-            final EthGetBalance ethBalance = web3j.ethGetBalance(transaction.getFrom(), LATEST).send();
-            final BigInteger balance = ethBalance.getBalance();
+        final CompletableFuture future = CompletableFuture.allOf(
+                getBalance,
+                getGas,
+                getGasPice
+        ).thenAccept((ignoreVoid) -> {
 
-            final EthEstimateGas ethEstimateGas = web3j.ethEstimateGas(transaction).send();
-            final EthGasPrice gasPrice = web3j.ethGasPrice().send();
-            final BigInteger executedCost = gasPrice.getGasPrice().multiply(ethEstimateGas.getAmountUsed());
+            final BigInteger gasPrice = getGasPice.join().getGasPrice();
+            final BigInteger balance = getBalance.join().getBalance();
+            final BigInteger ethEstimateGas = getGas.join().getAmountUsed();
 
-            final int i = balance.compareTo(executedCost);
+            final BigInteger executedCost = gasPrice.multiply(ethEstimateGas);
 
-            if (i == LESS) {
+            try {
+                if (balance.compareTo(executedCost) == LESS) {
 
-                final Transaction etherTransaction = Transaction.createEtherTransaction(
-                        hostAddress,
-                        BigInteger.ZERO,
-                        gasPrice.getGasPrice(),
-                        rawTransaction.getGasLimit(),
-                        transaction.getFrom(),
-                        executedCost.subtract(balance));
+                    final Transaction trans = Transaction.createEtherTransaction(
+                            hostAddress,
+                            BigInteger.ZERO,
+                            gasPrice,
+                            rawTransaction.getGasLimit(),
+                            transaction.getFrom(),
+                            executedCost.subtract(balance));
 
-                web3j.ethSendTransaction(etherTransaction).send();
+                    web3j.ethSendTransaction(trans).send();
+                }
+
+                web3j.ethSendRawTransaction(tx).send();
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
+        });
 
-            web3j.ethSendRawTransaction(tx);
-
-        } catch (final IOException e) {
-            LOGGER.error("Error : ", e);
-        }
+        final String key = UUID.randomUUID().toString();
+        cashe.put(key, future);
+        return key;
     }
 
-//    TODO: move to async execution
-//    private CompletableFuture<EthGasPrice> getGasPrice;
-//    private EthGasPrice ethGasPrice;
-//
-//    @Scheduled(cron = "0 0 * * * *")
-//    public void updateGasPrice() throws ExecutionException, InterruptedException {
-//
-//        if (getGasPrice == null) {
-//            getGasPrice = web3j.ethGasPrice().sendAsync();
-//        } else if (getGasPrice.isDone()) {
-//            ethGasPrice = getGasPrice.get();
-//        }
-//    }
+    @Override
+    public Status checkRawStatus(final String token) {
+
+        final CompletableFuture future = cashe.get(token);
+
+        if (future.isDone()) {
+            return Status.FINISHED;
+        }
+
+        if (future.isCompletedExceptionally()) {
+            return Status.ERROR;
+        }
+
+        return Status.PENDING;
+    }
 }
