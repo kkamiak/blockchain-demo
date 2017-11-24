@@ -1,7 +1,7 @@
 package by.instinctools.rest.controller;
 
 import by.instinctools.domain.main.MainManagement;
-import by.instinctools.domain.main.Status;
+import by.instinctools.domain.entity.Status;
 import by.instinctools.domain.mapper.MapperManagement;
 import by.instinctools.domain.validator.ValidateManagement;
 import by.instinctools.rest.dto.TransactionDto;
@@ -42,7 +42,7 @@ public class BlockchainController {
 
     @GetMapping(path = "/blockchain/check")
     public ResponseEntity<Status> checkRawStatus(@RequestBody final String token) {
-        final Status status = main.checkRawStatus(token);
+        final Status status = main.checkTransactionStatus(token);
         return ResponseEntity.ok().body(status);
     }
 }
