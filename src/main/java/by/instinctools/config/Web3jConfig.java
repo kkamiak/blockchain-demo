@@ -17,8 +17,8 @@ import java.io.IOException;
 public class Web3jConfig {
 
     @Bean
-    public Web3jService web3jService() {
-        return new HttpService();
+    public Web3jService web3jService(@Value("${net.url}") final String url) {
+        return new HttpService(url);
     }
 
     @Bean
