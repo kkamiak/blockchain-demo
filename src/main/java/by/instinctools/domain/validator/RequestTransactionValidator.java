@@ -16,7 +16,7 @@ public class RequestTransactionValidator implements ValidateManagement<Transacti
     private final String smartContractAddress;
 
     @Autowired
-    public RequestTransactionValidator(@Value("smart.contract.address") final String smartContractAddress) {
+    public RequestTransactionValidator(@Value("${smart.contract.address}") final String smartContractAddress) {
         this.smartContractAddress = smartContractAddress;
     }
 

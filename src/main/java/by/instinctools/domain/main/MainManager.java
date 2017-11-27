@@ -10,28 +10,34 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ConcurrentReferenceHashMap;
+import org.web3j.crypto.*;
 import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.request.Transaction;
-import org.web3j.protocol.core.methods.response.EthEstimateGas;
-import org.web3j.protocol.core.methods.response.EthGasPrice;
-import org.web3j.protocol.core.methods.response.EthGetBalance;
+import org.web3j.protocol.core.methods.response.*;
+import org.web3j.protocol.exceptions.TransactionException;
+import org.web3j.tx.Transfer;
+import org.web3j.utils.Convert;
+import org.web3j.utils.Numeric;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static by.instinctools.domain.entity.Status.PENDING;
-import static java.math.BigInteger.ZERO;
 import static java.time.LocalDate.now;
 import static org.web3j.protocol.core.DefaultBlockParameterName.LATEST;
 
 @Component
 public class MainManager implements MainManagement {
 
-    private static final BigInteger NONCE = ZERO;
     private static final int LESS = -1;
+    public static final BigInteger TRANSFER_GAS_AMOUNT = new BigInteger("210000");
 
     private final MapperManagement<String, Transaction> mapper;
     private final ValidateManagement<Transaction> validator;
@@ -41,6 +47,7 @@ public class MainManager implements MainManagement {
     private final BigInteger gasLimit;
     private final long maxPendingDays;
     private final String hostAddress;
+    private final Credentials credentials;
 
     private final Map<String, CompletableFuture> cache;
 
@@ -49,7 +56,7 @@ public class MainManager implements MainManagement {
                        final ValidateManagement<Transaction> validator,
                        final TransactionStatusRepository repository,
                        final Web3j web3j,
-
+                       final Credentials credentials,
                        @Value("${transaction.gas.limit}") final BigInteger gasLimit,
                        @Value("${wallet.host.address}") final String hostAddress,
                        @Value("${max.pending.days}") final long maxPendingDays) {
@@ -62,6 +69,7 @@ public class MainManager implements MainManagement {
         this.maxPendingDays = maxPendingDays;
         this.hostAddress = hostAddress;
         this.gasLimit = gasLimit;
+        this.credentials = credentials;
 
         this.cache = new ConcurrentReferenceHashMap<>();
     }
@@ -71,39 +79,44 @@ public class MainManager implements MainManagement {
         final Transaction transaction = mapper.transform(tx);
         validator.validate(transaction);
 
-        final CompletableFuture<EthGetBalance> getBalance = web3j.ethGetBalance(transaction.getFrom(), LATEST).sendAsync();
+        final CompletableFuture<EthGetBalance> getBalance = web3j.ethGetBalance("0x" + transaction.getFrom(), LATEST).sendAsync();
         final CompletableFuture<EthEstimateGas> getGas = web3j.ethEstimateGas(transaction).sendAsync();
-        final CompletableFuture<EthGasPrice> getGasPice = web3j.ethGasPrice().sendAsync();
+        final CompletableFuture<EthGetTransactionCount> transactionCount = web3j.ethGetTransactionCount("0x" + hostAddress, DefaultBlockParameterName.LATEST).sendAsync();
 
         final CompletableFuture future = CompletableFuture.allOf(
                 getBalance,
                 getGas,
-                getGasPice
-        ).thenAccept((ignoreVoid) -> {
+                transactionCount
+        ).thenAccept((Void ignoreVoid) -> {
 
-            final BigInteger gasPrice = getGasPice.join().getGasPrice();
             final BigInteger balance = getBalance.join().getBalance();
-            final BigInteger ethEstimateGas = getGas.join().getAmountUsed();
 
-            final BigInteger executedCost = gasPrice.multiply(ethEstimateGas);
+            BigInteger price = Numeric.decodeQuantity(transaction.getGasPrice());
+
+            final BigInteger executedCost = price.multiply(TRANSFER_GAS_AMOUNT);
 
             try {
                 if (balance.compareTo(executedCost) == LESS) {
-                    final Transaction trans = Transaction.createEtherTransaction(
-                            hostAddress,
-                            NONCE,
-                            gasPrice,
-                            gasLimit,
-                            transaction.getFrom(),
-                            executedCost.subtract(balance));
 
-                    web3j.ethSendTransaction(trans).send();
+                    BigDecimal bigDecimal = new BigDecimal(executedCost.subtract(balance));
+                    RemoteCall<TransactionReceipt> transactionReceiptRemoteCall = Transfer.sendFunds(web3j, credentials, transaction.getFrom(),
+                            bigDecimal, Convert.Unit.WEI);
+
+                    transactionReceiptRemoteCall.sendAsync().get();
                 }
 
-                web3j.ethSendRawTransaction(tx).send();
+                EthSendTransaction send = web3j.ethSendRawTransaction("0x" + tx).send();
+                String transactionHash = send.getTransactionHash();
+                System.out.println(transactionHash);
 
             } catch (IOException e) {
                 throw new RuntimeException(e);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            } catch (TransactionException e) {
+                e.printStackTrace();
             }
         });
 
