@@ -1,10 +1,5 @@
 package by.instinctools.utils;
 
-//
-// Source code recreated from a .class file by IntelliJ IDEA
-// (powered by Fernflower decompiler)
-//
-
 import org.bouncycastle.util.encoders.Hex;
 
 import java.io.ByteArrayOutputStream;
