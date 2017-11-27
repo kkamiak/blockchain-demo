@@ -6,5 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface TransactionStatusRepository extends CrudRepository<DBStatus, Long> {
+
     DBStatus findByToken(String token);
 }

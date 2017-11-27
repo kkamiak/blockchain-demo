@@ -5,23 +5,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.RawTransaction;
+import org.web3j.protocol.core.methods.request.Transaction;
 
 import javax.validation.ValidationException;
 
-@Service("RawTransactionValidator")
-@Qualifier("RawTransactionValidator")
-public class RawTransactionValidator implements ValidateManagement<RawTransaction> {
+@Service("RequestTransactionValidator")
+@Qualifier("RequestTransactionValidator")
+public class RequestTransactionValidator implements ValidateManagement<Transaction> {
 
     private final String smartContractAddress;
 
     @Autowired
-    public RawTransactionValidator(@Value("smart.contract.address") final String smartContractAddress) {
+    public RequestTransactionValidator(@Value("smart.contract.address") final String smartContractAddress) {
         this.smartContractAddress = smartContractAddress;
     }
 
     @Override
-    public void validate(final RawTransaction transaction) {
+    public void validate(final Transaction transaction) {
 
         final String to = transaction.getTo();
 

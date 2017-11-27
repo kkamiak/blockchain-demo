@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ConcurrentReferenceHashMap;
-import org.web3j.crypto.RawTransaction;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.methods.request.Transaction;
 import org.web3j.protocol.core.methods.response.EthEstimateGas;
@@ -24,43 +23,53 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static by.instinctools.domain.entity.Status.PENDING;
+import static java.math.BigInteger.ZERO;
 import static java.time.LocalDate.now;
 import static org.web3j.protocol.core.DefaultBlockParameterName.LATEST;
 
 @Component
 public class MainManager implements MainManagement {
 
+    private static final BigInteger NONCE = ZERO;
     private static final int LESS = -1;
-    private static final int MAX_DAYS_TO_ADD = 2;
 
-    private final MapperManagement<RawTransaction, Transaction> mapper;
-    private final ValidateManagement<RawTransaction> validator;
+    private final MapperManagement<String, Transaction> mapper;
+    private final ValidateManagement<Transaction> validator;
     private final TransactionStatusRepository repository;
     private final Web3j web3j;
 
+    private final BigInteger gasLimit;
+    private final long maxPendingDays;
     private final String hostAddress;
 
     private final Map<String, CompletableFuture> cache;
 
     @Autowired
-    public MainManager(final MapperManagement<RawTransaction, Transaction> mapper,
-                       final ValidateManagement<RawTransaction> validator,
+    public MainManager(final MapperManagement<String, Transaction> mapper,
+                       final ValidateManagement<Transaction> validator,
                        final TransactionStatusRepository repository,
                        final Web3j web3j,
-                       @Value("walllet.host.address") final String hostAddress) {
+
+                       @Value("${transaction.gas.limit}") final BigInteger gasLimit,
+                       @Value("${wallet.host.address}") final String hostAddress,
+                       @Value("${max.pending.days}") final long maxPendingDays) {
+
         this.repository = repository;
         this.validator = validator;
         this.mapper = mapper;
         this.web3j = web3j;
 
+        this.maxPendingDays = maxPendingDays;
         this.hostAddress = hostAddress;
+        this.gasLimit = gasLimit;
+
         this.cache = new ConcurrentReferenceHashMap<>();
     }
 
     @Override
-    public String sendRawTransaction(final RawTransaction rawTransaction, final String tx) {
-        validator.validate(rawTransaction);
-        final Transaction transaction = mapper.transform(rawTransaction);
+    public String sendRawTransaction(final String tx) {
+        final Transaction transaction = mapper.transform(tx);
+        validator.validate(transaction);
 
         final CompletableFuture<EthGetBalance> getBalance = web3j.ethGetBalance(transaction.getFrom(), LATEST).sendAsync();
         final CompletableFuture<EthEstimateGas> getGas = web3j.ethEstimateGas(transaction).sendAsync();
@@ -80,12 +89,11 @@ public class MainManager implements MainManagement {
 
             try {
                 if (balance.compareTo(executedCost) == LESS) {
-
                     final Transaction trans = Transaction.createEtherTransaction(
                             hostAddress,
-                            BigInteger.ZERO,//TODO replace
+                            NONCE,
                             gasPrice,
-                            rawTransaction.getGasLimit(),
+                            gasLimit,
                             transaction.getFrom(),
                             executedCost.subtract(balance));
 
@@ -104,7 +112,7 @@ public class MainManager implements MainManagement {
         final DBStatus entity = new DBStatus();
         entity.setStatus(PENDING);
         entity.setToken(token);
-        entity.setTime(now().plusDays(MAX_DAYS_TO_ADD));
+        entity.setTime(now().plusDays(maxPendingDays));
 
         repository.save(entity);
 

@@ -2,7 +2,7 @@ package by.instinctools.rest.dto;
 
 import java.io.Serializable;
 
-public class TransactionDto implements Serializable {
+public class RawTransactionDto implements Serializable {
 
     private static final long serialVersionUID = -612398939922696830L;
 
