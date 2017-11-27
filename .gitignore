@@ -25,3 +25,4 @@ nbdist/
 /package-lock.json
 /logs/
 /database/
+/node_modules/
