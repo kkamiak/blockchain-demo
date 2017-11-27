@@ -10,8 +10,10 @@ import org.web3j.rlp.RlpType;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import static by.instinctools.utils.ByteUtil.EMPTY_BYTE_ARRAY;
 import static org.bouncycastle.util.BigIntegers.*;
 
 /**
@@ -21,11 +23,8 @@ public class RLP extends RlpEncoder {
 
     private static final Logger logger = LoggerFactory.getLogger("rlp");
 
-    public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
     public static final byte[] ZERO_BYTE_ARRAY = new byte[]{0};
 
-    public static final byte[] EMPTY_ELEMENT_RLP = encode(RlpString.create(new byte[0]));
-    private static final double MAX_ITEM_LENGTH = Math.pow(256, 8);
     private static final int SIZE_THRESHOLD = 56;
     private static final int OFFSET_SHORT_ITEM = 0x80;
     private static final int OFFSET_LONG_ITEM = 0xb7;
@@ -74,10 +73,6 @@ public class RLP extends RlpEncoder {
                     List<RlpType> prefixes = new ArrayList<>();
 
                     RlpList newLevelList = new RlpList(prefixes);
-//                    newLevelList.setRlpData(rlpData);
-
-//                    RLPList newLevelList = new RLPList();
-//                    newLevelList.setRLPData(rlpData);
 
                     fullTraverse(msgData, level + 1, pos + lengthOfLength + 1,
                             pos + lengthOfLength + length + 1, levelToIndex,
@@ -167,7 +162,7 @@ public class RLP extends RlpEncoder {
                 }
                 // null item
                 if ((msgData[pos] & 0xFF) == OFFSET_SHORT_ITEM) {
-                    byte[] item = ByteUtil.EMPTY_BYTE_ARRAY;
+                    byte[] item = EMPTY_BYTE_ARRAY;
                     RlpString rlpItem = RlpString.create(item);
                     rlpList.getValues().add(rlpItem);
                     pos += 1;
@@ -190,8 +185,72 @@ public class RLP extends RlpEncoder {
         }
     }
 
-    public static byte[] encodeBytes(byte[] value) {
-        return encode(RlpString.create(value));
+    public static byte[] encodeBytes(byte[] srcData) {
+        if (ByteUtil.isNullOrZeroArray(srcData))
+            return new byte[]{(byte) OFFSET_SHORT_ITEM};
+        else if (ByteUtil.isSingleZero(srcData))
+            return srcData;
+        else if (srcData.length == 1 && (srcData[0] & 0xFF) < 0x80) {
+            return srcData;
+        } else if (srcData.length < SIZE_THRESHOLD) {
+            // length = 8X
+            byte length = (byte) (OFFSET_SHORT_ITEM + srcData.length);
+            byte[] data = Arrays.copyOf(srcData, srcData.length + 1);
+            System.arraycopy(data, 0, data, 1, srcData.length);
+            data[0] = length;
+
+            return data;
+        } else {
+            // length of length = BX
+            // prefix = [BX, [length]]
+            int tmpLength = srcData.length;
+            byte byteNum = 0;
+            while (tmpLength != 0) {
+                ++byteNum;
+                tmpLength = tmpLength >> 8;
+            }
+            byte[] lenBytes = new byte[byteNum];
+            for (int i = 0; i < byteNum; ++i) {
+                lenBytes[byteNum - 1 - i] = (byte) ((srcData.length >> (8 * i)) & 0xFF);
+            }
+            // first byte = F7 + bytes.length
+            byte[] data = Arrays.copyOf(srcData, srcData.length + 1 + byteNum);
+            System.arraycopy(data, 0, data, 1 + byteNum, srcData.length);
+            data[0] = (byte) (OFFSET_LONG_ITEM + byteNum);
+            System.arraycopy(lenBytes, 0, data, 1, lenBytes.length);
+
+            return data;
+        }
+
+    }
+
+    public static byte[] encodeInt(int singleInt) {
+        if ((singleInt & 0xFF) == singleInt)
+            return encodeByte((byte) singleInt);
+        else if ((singleInt & 0xFFFF) == singleInt)
+            return encodeShort((short) singleInt);
+        else if ((singleInt & 0xFFFFFF) == singleInt)
+            return new byte[]{(byte) (OFFSET_SHORT_ITEM + 3),
+                    (byte) (singleInt >>> 16),
+                    (byte) (singleInt >>> 8),
+                    (byte) singleInt};
+        else {
+            return new byte[]{(byte) (OFFSET_SHORT_ITEM + 4),
+                    (byte) (singleInt >>> 24),
+                    (byte) (singleInt >>> 16),
+                    (byte) (singleInt >>> 8),
+                    (byte) singleInt};
+        }
+    }
+
+    public static byte[] encodeShort(short singleShort) {
+        if ((singleShort & 0xFF) == singleShort)
+            return encodeByte((byte) singleShort);
+        else {
+            return new byte[]{(byte) (OFFSET_SHORT_ITEM + 2),
+                    (byte) (singleShort >> 8 & 0xFF),
+                    (byte) (singleShort >> 0 & 0xFF)};
+        }
     }
 
     private static int calcLength(int lengthOfLength, byte[] msgData, int pos) {
