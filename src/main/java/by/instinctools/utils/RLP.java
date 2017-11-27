@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static by.instinctools.utils.ByteUtil.EMPTY_BYTE_ARRAY;
-import static org.bouncycastle.util.BigIntegers.*;
+import static org.bouncycastle.util.BigIntegers.asUnsignedByteArray;
 
 /**
  * Created by haria on 23.11.17.

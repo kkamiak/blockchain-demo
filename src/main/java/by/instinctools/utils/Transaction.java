@@ -12,11 +12,9 @@ import org.web3j.rlp.RlpString;
 import org.web3j.rlp.RlpType;
 
 import java.math.BigInteger;
-import java.security.interfaces.ECKey;
 import java.util.Arrays;
 
 import static by.instinctools.utils.ByteUtil.EMPTY_BYTE_ARRAY;
-
 import static by.instinctools.utils.RLP.ZERO_BYTE_ARRAY;
 import static org.apache.commons.lang3.ArrayUtils.isEmpty;
 
@@ -140,7 +138,9 @@ public class Transaction {
 
 
     private Integer extractChainIdFromV(BigInteger bv) {
-        if (bv.bitLength() > 31) return Integer.MAX_VALUE; // chainId is limited to 31 bits, longer are not valid for now
+        if (bv.bitLength() > 31) {
+            return Integer.MAX_VALUE; // chainId is limited to 31 bits, longer are not valid for now
+        }
         long v = bv.longValue();
         if (v == LOWER_REAL_V || v == (LOWER_REAL_V + 1)) return null;
         return (int) ((v - CHAIN_ID_INC) / 2);
