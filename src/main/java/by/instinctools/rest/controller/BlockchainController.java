@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.util.Map;
+
+import static java.util.Collections.singletonMap;
+
 @Controller
 @RequestMapping(value = "/api")
 public class BlockchainController {
@@ -28,15 +32,15 @@ public class BlockchainController {
     }
 
     @PostMapping(path = "/blockchain")
-    public ResponseEntity<String> sendRawTransaction(@RequestBody final RawTransactionDto transaction) throws DecoderException {
+    public ResponseEntity<Map<String, String>> sendRawTransaction(@RequestBody final RawTransactionDto transaction) throws DecoderException {
         validator.validate(transaction);
         final String token = main.sendRawTransaction(transaction.getTx());
-        return ResponseEntity.ok().body("");
+        return ResponseEntity.ok().body(singletonMap("token", token));
     }
 
-    @GetMapping(path = "/blockchain/check")
-    public ResponseEntity<Status> checkRawStatus(@RequestBody final String token) {
-        final Status status = main.checkTransactionStatus(token);
-        return ResponseEntity.ok().body(status);
+    @PostMapping(path = "/blockchain/check")
+    public ResponseEntity<Map<String, Status>> checkRawStatus(@RequestBody final Map<String, String> args) {
+        final Status status = main.checkTransactionStatus(args.get("token"));
+        return ResponseEntity.ok().body(singletonMap("status", status));
     }
 }
