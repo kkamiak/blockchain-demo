@@ -10,24 +10,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ConcurrentReferenceHashMap;
-import org.web3j.crypto.*;
+import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
-import org.web3j.protocol.core.DefaultBlockParameterName;
-import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.request.Transaction;
-import org.web3j.protocol.core.methods.response.*;
-import org.web3j.protocol.exceptions.TransactionException;
 import org.web3j.tx.Transfer;
 import org.web3j.utils.Convert;
 import org.web3j.utils.Numeric;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 import static by.instinctools.domain.entity.Status.PENDING;
 import static java.time.LocalDate.now;
@@ -36,18 +30,17 @@ import static org.web3j.protocol.core.DefaultBlockParameterName.LATEST;
 @Component
 public class MainManager implements MainManagement {
 
+    private static final BigInteger TRANSFER_GAS_AMOUNT = new BigInteger("210000");
+    private static final String PREFIX = "0x";
     private static final int LESS = -1;
-    public static final BigInteger TRANSFER_GAS_AMOUNT = new BigInteger("210000");
 
     private final MapperManagement<String, Transaction> mapper;
     private final ValidateManagement<Transaction> validator;
     private final TransactionStatusRepository repository;
+    private final Credentials credentials;
     private final Web3j web3j;
 
-    private final BigInteger gasLimit;
     private final long maxPendingDays;
-    private final String hostAddress;
-    private final Credentials credentials;
 
     private final Map<String, CompletableFuture> cache;
 
@@ -57,8 +50,7 @@ public class MainManager implements MainManagement {
                        final TransactionStatusRepository repository,
                        final Web3j web3j,
                        final Credentials credentials,
-                       @Value("${transaction.gas.limit}") final BigInteger gasLimit,
-                       @Value("${wallet.host.address}") final String hostAddress,
+
                        @Value("${max.pending.days}") final long maxPendingDays) {
 
         this.repository = repository;
@@ -67,8 +59,6 @@ public class MainManager implements MainManagement {
         this.web3j = web3j;
 
         this.maxPendingDays = maxPendingDays;
-        this.hostAddress = hostAddress;
-        this.gasLimit = gasLimit;
         this.credentials = credentials;
 
         this.cache = new ConcurrentReferenceHashMap<>();
@@ -79,46 +69,36 @@ public class MainManager implements MainManagement {
         final Transaction transaction = mapper.transform(tx);
         validator.validate(transaction);
 
-        final CompletableFuture<EthGetBalance> getBalance = web3j.ethGetBalance("0x" + transaction.getFrom(), LATEST).sendAsync();
-        final CompletableFuture<EthEstimateGas> getGas = web3j.ethEstimateGas(transaction).sendAsync();
-        final CompletableFuture<EthGetTransactionCount> transactionCount = web3j.ethGetTransactionCount("0x" + hostAddress, DefaultBlockParameterName.LATEST).sendAsync();
+        final String from = normalize(transaction.getFrom());
 
-        final CompletableFuture future = CompletableFuture.allOf(
-                getBalance,
-                getGas,
-                transactionCount
-        ).thenAccept((Void ignoreVoid) -> {
+        final CompletableFuture<Void> future = web3j.ethGetBalance(from, LATEST)
+                .sendAsync()
+                .thenAccept((ethBalance) -> {
 
-            final BigInteger balance = getBalance.join().getBalance();
+                    final BigInteger balance = ethBalance.getBalance();
+                    final BigInteger price = Numeric.decodeQuantity(transaction.getGasPrice());
+                    final BigInteger executedCost = price.multiply(TRANSFER_GAS_AMOUNT);
 
-            BigInteger price = Numeric.decodeQuantity(transaction.getGasPrice());
+                    try {
+                        if (balance.compareTo(executedCost) == LESS) {
 
-            final BigInteger executedCost = price.multiply(TRANSFER_GAS_AMOUNT);
+                            final BigDecimal amount = new BigDecimal(executedCost.subtract(balance));
 
-            try {
-                if (balance.compareTo(executedCost) == LESS) {
+                            Transfer.sendFunds(
+                                    web3j,
+                                    credentials,
+                                    from,
+                                    amount,
+                                    Convert.Unit.WEI
+                            ).send();
+                        }
 
-                    BigDecimal bigDecimal = new BigDecimal(executedCost.subtract(balance));
-                    RemoteCall<TransactionReceipt> transactionReceiptRemoteCall = Transfer.sendFunds(web3j, credentials, transaction.getFrom(),
-                            bigDecimal, Convert.Unit.WEI);
+                        web3j.ethSendRawTransaction(normalize(tx)).send();
 
-                    transactionReceiptRemoteCall.sendAsync().get();
-                }
-
-                EthSendTransaction send = web3j.ethSendRawTransaction("0x" + tx).send();
-                String transactionHash = send.getTransactionHash();
-                System.out.println(transactionHash);
-
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (ExecutionException e) {
-                e.printStackTrace();
-            } catch (TransactionException e) {
-                e.printStackTrace();
-            }
-        });
+                    } catch (final Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
 
         final String token = UUID.randomUUID().toString();
 
@@ -132,6 +112,10 @@ public class MainManager implements MainManagement {
         cache.put(token, future);
 
         return token;
+    }
+
+    private String normalize(final String address) {
+        return address.startsWith(PREFIX) ? address : PREFIX + address;
     }
 
     @Override
