@@ -13,6 +13,7 @@ import org.springframework.util.ConcurrentReferenceHashMap;
 import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.methods.request.Transaction;
+import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.tx.Transfer;
 import org.web3j.utils.Convert;
 import org.web3j.utils.Numeric;
@@ -30,7 +31,7 @@ import static org.web3j.protocol.core.DefaultBlockParameterName.LATEST;
 @Component
 public class MainManager implements MainManagement {
 
-    private static final BigInteger TRANSFER_GAS_AMOUNT = new BigInteger("210000");
+    private static final BigInteger TRANSFER_GAS_AMOUNT = new BigInteger("22160664818");
     private static final String PREFIX = "0x";
     private static final int LESS = -1;
 
@@ -76,8 +77,8 @@ public class MainManager implements MainManagement {
                 .thenAccept((ethBalance) -> {
 
                     final BigInteger balance = ethBalance.getBalance();
-                    final BigInteger price = Numeric.decodeQuantity(transaction.getGasPrice());
-                    final BigInteger executedCost = price.multiply(TRANSFER_GAS_AMOUNT);
+                    final BigInteger gasLimit = Numeric.decodeQuantity(transaction.getGas());
+                    final BigInteger executedCost = gasLimit.multiply(TRANSFER_GAS_AMOUNT);
 
                     try {
                         if (balance.compareTo(executedCost) == LESS) {
@@ -90,10 +91,10 @@ public class MainManager implements MainManagement {
                                     from,
                                     amount,
                                     Convert.Unit.WEI
-                            ).send();
+                            ).sendAsync().get();
                         }
 
-                        web3j.ethSendRawTransaction(normalize(tx)).send();
+                        web3j.ethSendRawTransaction(normalize(tx)).sendAsync().get();
 
                     } catch (final Exception e) {
                         throw new RuntimeException(e);

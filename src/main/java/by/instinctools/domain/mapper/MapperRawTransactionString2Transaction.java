@@ -21,7 +21,7 @@ public class MapperRawTransactionString2Transaction implements MapperManagement<
                     Hex.encodeHexString(source.getSender()),
                     new BigInteger(source.getNonce()),
                     new BigInteger(source.getGasPrice()),
-                    new BigInteger(source.getGasLimit()),
+                    new BigInteger(1, source.getGasLimit()),
                     Hex.encodeHexString(source.getReceiveAddress()),
                     new BigInteger(source.getValue()),
                     Hex.encodeHexString(source.getData())

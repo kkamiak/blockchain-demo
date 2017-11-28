@@ -31,7 +31,7 @@ public class BlockchainController {
     public ResponseEntity<String> sendRawTransaction(@RequestBody final RawTransactionDto transaction) throws DecoderException {
         validator.validate(transaction);
         final String token = main.sendRawTransaction(transaction.getTx());
-        return ResponseEntity.ok().body(token);
+        return ResponseEntity.ok().body("");
     }
 
     @GetMapping(path = "/blockchain/check")
