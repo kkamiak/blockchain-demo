@@ -124,7 +124,7 @@ public class MainManager implements MainManagement {
         return repository.findByToken(token).getStatus();
     }
 
-    @Scheduled(cron = "*/20 * * * * *")
+    @Scheduled(fixedDelay = 5000)
     public void cleanCache() {
         cache.entrySet().stream()
                 .filter(ks -> !Status.PENDING.equals(getStatus(ks)))
