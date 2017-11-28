@@ -25,8 +25,8 @@ public class RequestTransactionValidator implements ValidateManagement<Transacti
 
         final String to = transaction.getTo();
 
-        if (!StringUtils.equals(to, smartContractAddress)) {
-            throw new ValidationException("Wrong contract address.");
-        }
+//        if (!StringUtils.equals(to, smartContractAddress)) {
+//            throw new ValidationException("Wrong contract address.");
+//        }
     }
 }
