@@ -349,6 +349,10 @@ public class Transaction {
     }
 
     private byte[] computeAddress(byte[] pubBytes) {
+        if(pubBytes.length > 64) {
+            pubBytes = Arrays.copyOfRange(pubBytes, 1, pubBytes.length);
+        }
+
         byte[] hash = Hash.sha3(pubBytes);
         return Arrays.copyOfRange(hash, 12, hash.length);
     }

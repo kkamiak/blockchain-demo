@@ -31,7 +31,7 @@ import static org.web3j.protocol.core.DefaultBlockParameterName.LATEST;
 @Component
 public class MainManager implements MainManagement {
 
-    private static final BigInteger TRANSFER_GAS_AMOUNT = new BigInteger("22160664818");
+    private static final BigInteger TRANSFER_GAS_AMOUNT = new BigInteger("40000");
     private static final String PREFIX = "0x";
     private static final int LESS = -1;
 
@@ -72,19 +72,22 @@ public class MainManager implements MainManagement {
 
         final String from = normalize(transaction.getFrom());
 
+        System.out.println("from : " + from);
+
         final CompletableFuture<Void> future = web3j.ethGetBalance(from, LATEST)
                 .sendAsync()
                 .thenAccept((ethBalance) -> {
 
                     final BigInteger balance = ethBalance.getBalance();
                     final BigInteger gasLimit = Numeric.decodeQuantity(transaction.getGas());
-                    final BigInteger executedCost = gasLimit.multiply(TRANSFER_GAS_AMOUNT);
+                    final BigInteger gasPrice = Numeric.decodeQuantity(transaction.getGasPrice());
+                    final BigInteger executedCost = gasLimit.multiply(gasPrice);
 
                     try {
                         if (balance.compareTo(executedCost) == LESS) {
 
                             final BigDecimal amount = new BigDecimal(executedCost.subtract(balance));
-
+                            System.out.println("sending!");
                             Transfer.sendFunds(
                                     web3j,
                                     credentials,
@@ -94,7 +97,8 @@ public class MainManager implements MainManagement {
                             ).sendAsync().get();
                         }
 
-                        web3j.ethSendRawTransaction(normalize(tx)).sendAsync().get();
+                        EthSendTransaction ethSendTransaction = web3j.ethSendRawTransaction(normalize(tx)).sendAsync().get();
+                        System.out.println("tx: "+ ethSendTransaction.getTransactionHash());
 
                     } catch (final Exception e) {
                         throw new RuntimeException(e);
